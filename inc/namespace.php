@@ -274,6 +274,12 @@ function on_transition_post_status( string $new_status, string $old_status, WP_P
 		return;
 	}
 
+	// Is this a new post? If so, don't send any invalidations.
+	$skip_invalidation = apply_filters( 'smartcache.should_invalidate', ! is_new_content( $post ), $post );
+	if ( $skip_invalidation ) {
+		return;
+	}
+
 	queue_invalidate_urls( get_urls_to_invalidate_for_post( $post->ID ) );
 }
 
