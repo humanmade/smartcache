@@ -1,6 +1,6 @@
 <?php
 
-namespace Longcache;
+namespace Smartcache;
 
 use Altis\Cloud;
 use Exception;
@@ -15,11 +15,11 @@ use WP_Post;
 function bootstrap() : void {
 	add_action( 'template_redirect', __NAMESPACE__ . '\\set_cache_ttl' );
 	add_action( 'transition_post_status', __NAMESPACE__ . '\\on_transition_post_status', 10, 3 );
-	add_action( 'logcache.invalidate_urls', __NAMESPACE__ . '\\on_cron_invalidate_urls' );
+	add_action( 'smartcache.invalidate_urls', __NAMESPACE__ . '\\on_cron_invalidate_urls' );
 
-	if ( defined( 'WP_CLI' ) && WP_CLI ) {
+	if ( defined( 'WP_CLI' ) && \WP_CLI ) {
 		require_once __DIR__ . '/class-cli-command.php';
-		WP_CLI::add_command( 'longcache', __NAMESPACE__ . '\\CLI_Command' );
+		WP_CLI::add_command( 'smartcache', __NAMESPACE__ . '\\CLI_Command' );
 	}
 }
 
@@ -43,8 +43,9 @@ function should_cache_response() : bool {
 		$should_cache = false;
 	}
 
-	return apply_filters( 'longcache.should_cache', $should_cache );
+	return apply_filters( 'smartcache.should_cache', $should_cache );
 }
+
 /**
  * Set the cache TTL depending on the curernt global scope.
  *
@@ -56,7 +57,7 @@ function set_cache_ttl() : void {
 	}
 
 	global $batcache;
-	$max_age = absint( apply_filters( 'longcache.max-age', DAY_IN_SECONDS * 14 ) ); // 14 days by default.
+	$max_age = absint( apply_filters( 'smartcache.max-age', DAY_IN_SECONDS * 14 ) ); // 14 days by default.
 	if ( ! $batcache || ! is_object( $batcache ) ) {
 		header( 'Cache-Control: s-maxage=' . $max_age . ', must-revalidate' );
 	} else {
@@ -191,7 +192,7 @@ function get_urls_to_invalidate_for_post( int $post_id ) : array {
 		get_permalink( $post_id ),
 	];
 
-	$urls = apply_filters( 'longcache.urls_to_invalidate_for_post', $urls, $post_id );
+	$urls = apply_filters( 'smartcache.urls_to_invalidate_for_post', $urls, $post_id );
 
 	return $urls;
 }

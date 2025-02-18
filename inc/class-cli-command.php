@@ -1,6 +1,6 @@
 <?php
 
-namespace Longcache;
+namespace Smartcache;
 
 use WP_CLI_Command;
 use WP_CLI;

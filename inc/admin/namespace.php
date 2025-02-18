@@ -1,11 +1,11 @@
 <?php
 
-namespace Longcache\Admin;
+namespace Smartcache\Admin;
 
 use Altis\Cloud;
-use Longcache;
+use Smartcache;
 
-const MENU_SLUG = 'longcache';
+const MENU_SLUG = 'smartcache';
 
 /**
  * Bootstrap function for all admin functions.
@@ -24,8 +24,8 @@ function bootstrap() : void {
 function register_admin_page() : void {
 	add_submenu_page(
 		'options-general.php',
-		_x( 'Longcache', 'settings page title', 'longcache' ),
-		_x( 'Longcache', 'settings menu title', 'longcache' ),
+		_x( 'Smartcache', 'settings page title', 'smartcache' ),
+		_x( 'Smartcache', 'settings menu title', 'smartcache' ),
 		'manage_options',
 		MENU_SLUG,
 		__NAMESPACE__ . '\\render_settings_page'
@@ -33,29 +33,29 @@ function register_admin_page() : void {
 }
 
 function render_settings_page() : void {
-	settings_errors( 'longcache' );
+	settings_errors( 'smartcache' );
 	?>
 	<div class="wrap">
 		<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 		<form action="options.php" method="post">
 			<?php
-			settings_fields( 'longcache' );
-			do_settings_sections( 'longcache' );
+			settings_fields( 'smartcache' );
+			do_settings_sections( 'smartcache' );
 			?>
 		</form>
 
-		<h1><?php echo __( 'Invalidate URLs', 'longcache' ) ?></h1>
+		<h1><?php echo __( 'Invalidate URLs', 'smartcache' ) ?></h1>
 		<form method="post">
 			<label>
 				URLs to invalidate (one per line.)
-				<textarea class="large-text code" rows=10 name="longcache_urls"></textarea>
+				<textarea class="large-text code" rows=10 name="smartcache_urls"></textarea>
 			</label>
 			<p class="description">
 				Use <code>*</code> as a wildcard, wildcards can only be at the end of a URL. A maximum of <?php echo esc_html( Cloud\PATHS_INVALIDATION_LIMIT ) ?> absolute URLs or <?php echo esc_html( Cloud\WILDCARD_INVALIDATION_LIMIT ) ?> wildcard URLs can be issued per request.
 			</p>
 			<?php
-			wp_nonce_field( 'longcache.invalidate-urls' );
-			submit_button( __( 'Invalidate', 'longcache' ) );
+			wp_nonce_field( 'smartcache.invalidate-urls' );
+			submit_button( __( 'Invalidate', 'smartcache' ) );
 			?>
 		</form>
 
@@ -75,10 +75,10 @@ function render_settings_page() : void {
  * @return void
  */
 function check_on_invalidate_urls_submit() {
-	if ( isset( $_POST['longcache_urls'] ) && check_admin_referer( 'longcache.invalidate-urls' ) ) {
-		$urls = array_filter( array_map( 'sanitize_text_field', array_map( 'trim', explode( "\n", $_POST['longcache_urls'] ) ) ) );
+	if ( isset( $_POST['smartcache_urls'] ) && check_admin_referer( 'smartcache.invalidate-urls' ) ) {
+		$urls = array_filter( array_map( 'sanitize_text_field', array_map( 'trim', explode( "\n", $_POST['smartcache_urls'] ) ) ) );
 
-		$result = Longcache\invalidate_urls( $urls );
+		$result = Smartcache\invalidate_urls( $urls );
 
 		if ( $result === true ) {
 			add_settings_error( 'logcache', 'invalidated', __( 'Invalidate request successful.'), 'success' );

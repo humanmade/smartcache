@@ -1,6 +1,6 @@
 <?php
 
-namespace Longcache\Log;
+namespace Smartcache\Log;
 
 /**
  * Set up the log.
@@ -8,16 +8,16 @@ namespace Longcache\Log;
  * @return void
  */
 function bootstrap() : void {
-	if ( ! wp_cache_get( 'longcache.table_created' ) ) {
+	if ( ! wp_cache_get( 'smartcache.table_created' ) ) {
 		create_table();
-		wp_cache_set( 'longcache.table_created', true );
+		wp_cache_set( 'smartcache.table_created', true );
 	}
 
-	if ( ! wp_next_scheduled( 'longcache.log.truncate' ) ) {
-		wp_schedule_event( strtotime( '2am' ), 'daily', 'longcache.log.truncate' );
+	if ( ! wp_next_scheduled( 'smartcache.log.truncate' ) ) {
+		wp_schedule_event( strtotime( '2am' ), 'daily', 'smartcache.log.truncate' );
 	}
 
-	add_action( 'longcache.log.truncate', __NAMESPACE__ . '\\on_truncate_log' );
+	add_action( 'smartcache.log.truncate', __NAMESPACE__ . '\\on_truncate_log' );
 }
 
 /**
@@ -30,7 +30,7 @@ function create_table() : void {
 
 	$charset_collate = $wpdb->get_charset_collate();
 
-	$query = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}longcache_log` (
+	$query = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}smartcache_log` (
 		`id` int(20) unsigned NOT NULL AUTO_INCREMENT,
 		`date` datetime NOT NULL,
 		`url` char(255) NOT NULL,
@@ -51,7 +51,7 @@ function create_table() : void {
 function insert_entry( string $url, string $status, $data = null ) : void {
 	global $wpdb;
 	$wpdb->insert(
-		"{$wpdb->prefix}longcache_log",
+		"{$wpdb->prefix}smartcache_log",
 		[
 			'url' => $url,
 			'date' => date( 'Y-m-d H:i:s' ),
@@ -73,7 +73,7 @@ function get_entries( int $number, int $page ) : array {
 
 	$from = absint( ( $page - 1 ) * $number );
 	$results = $wpdb->get_results(
-		"SELECT SQL_CALC_FOUND_ROWS * FROM {$wpdb->prefix}longcache_log ORDER BY date DESC LIMIT $from, $number",
+		"SELECT SQL_CALC_FOUND_ROWS * FROM {$wpdb->prefix}smartcache_log ORDER BY date DESC LIMIT $from, $number",
 		ARRAY_A
 	);
 
@@ -98,11 +98,11 @@ function get_entries( int $number, int $page ) : array {
  */
 function delete_entries() : void {
 	global $wpdb;
-	$wpdb->query( "TRUNCATE {$wpdb->prefix}longcache_log" );
+	$wpdb->query( "TRUNCATE {$wpdb->prefix}smartcache_log" );
 }
 
 /**
- * Cron callback function for the longcache.log.truncate job.
+ * Cron callback function for the smartcache.log.truncate job.
  *
  * Clears all entries from the log that are over 30 days.
  *
@@ -111,6 +111,6 @@ function delete_entries() : void {
 function on_truncate_log() : void {
 	global $wpdb;
 	$result = $wpdb->query(
-		$wpdb->prepare( "DELETE FROM {$wpdb->prefix}longcache_log WHERE `date` < %s", date( 'Y-m-d H:i:s', strtotime( '30 days ago' ) ) ),
+		$wpdb->prepare( "DELETE FROM {$wpdb->prefix}smartcache_log WHERE `date` < %s", date( 'Y-m-d H:i:s', strtotime( '30 days ago' ) ) ),
 	);
 }

@@ -1,13 +1,13 @@
 <?php
 
 /**
- * Plugin name: Longcache
- * Description: Cache pages for a long time
+ * Plugin name: Smartcache
+ * Description: Smart cache lifetimes for WordPress
  * Author: Joe Hoyle
  * Version: 0.1.0
  */
 
-namespace Longcache;
+namespace Smartcache;
 
 require_once __DIR__ . '/inc/namespace.php';
 require_once __DIR__ . '/inc/admin/namespace.php';

@@ -1,6 +1,6 @@
 {
-    "name": "humanmade/longcache",
-    "description": "Cache WordPress responses for a long time",
+    "name": "humanmade/smartcache",
+    "description": "Smart cache lifetimes for WordPress",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "authors": [
@@ -9,5 +9,7 @@
             "email": "joehoyle@gmail.com"
         }
     ],
-    "require": {}
+    "require": {
+        "php": ">=8.0"
+    }
 }

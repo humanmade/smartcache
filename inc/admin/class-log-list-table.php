@@ -1,8 +1,8 @@
 <?php
 
-namespace Longcache\Admin;
+namespace Smartcache\Admin;
 
-use Longcache\Log;
+use Smartcache\Log;
 use WP_List_Table;
 
 class Log_List_Table extends WP_List_Table {
