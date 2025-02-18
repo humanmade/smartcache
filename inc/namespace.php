@@ -8,6 +8,27 @@ use WP_CLI;
 use WP_Post;
 
 /**
+ * Short lifetime, used by frequently updated content.
+ *
+ * (5 minutes.)
+ */
+const LIFETIME_SHORT = 300;
+
+/**
+ * Medium lifetime, used by most regular content.
+ *
+ * (6 hours.)
+ */
+const LIFETIME_MEDIUM = 21600;
+
+/**
+ * Long lifetime, used by rarely updated or old content.
+ *
+ * (14 days.)
+ */
+const LIFETIME_LONG = 1209600;
+
+/**
  * Bootstrap function to set up the plugin.
  *
  * @return void
@@ -47,6 +68,82 @@ function should_cache_response() : bool {
 }
 
 /**
+ * Check if the given post is "old".
+ *
+ * Old content is unlikely to change frequently.
+ */
+function is_old_content( WP_Post $post ) {
+	$old_threshold = apply_filters( 'smartcache.old_threshold', 7 * DAY_IN_SECONDS );
+	return apply_filters( 'smartcache.is_old_post', $post->post_date_gmt < ( time() - $old_threshold ) );
+}
+
+function is_new_content( WP_Post $post ) {
+	return apply_filters( 'smartcache.is_new_post', $post->post_date_gmt > ( time() - DAY_IN_SECONDS ) );
+}
+
+/**
+ * Get the default lifetime for the current page.
+ *
+ * Determines an appropriate lifetime based on the age and type of the content.
+ *
+ * This can be overridden by setting a different max age manually.
+ *
+ * @return int One of LIFETIME_SHORT, LIFETIME_MEDIUM, or LIFETIME_LONG.
+ */
+function get_default_lifetime() : int {
+	// The home (i.e. post list page) is likely to change more frequently,
+	// and feed readers should always receive fresh content.
+	if ( is_home() || is_feed() ) {
+		return LIFETIME_SHORT;
+	}
+
+	// Single content depends on how old the content is.
+	if ( is_singular() ) {
+		$post = get_queried_object();
+
+		// If the post was published today, cache it for a shorter time.
+		// This accounts for fixes to the content, new comments, etc.
+		if ( is_new_content( $post ) ) {
+			return LIFETIME_SHORT;
+		}
+
+		// If the post is older than 7 days, cache it for longer.
+		// Also, pages are likely to change less frequently.
+		if ( is_old_content( $post ) || is_page() ) {
+			return LIFETIME_LONG;
+		}
+
+		return LIFETIME_MEDIUM;
+	}
+
+	// Date-based archives won't change after the period is over.
+	if ( is_date() ) {
+		$is_current = $is_current = get_query_var( 'year' ) === date( 'Y' );
+		if ( is_month() || is_day() ) {
+			$is_current = $is_current && get_query_var( 'monthnum' ) === date( 'm' );
+		}
+		if ( is_day() ) {
+			$is_current = $is_current && get_query_var( 'day' ) === date( 'd' );
+		}
+
+		return $is_current ? LIFETIME_MEDIUM : LIFETIME_LONG;
+	}
+
+	// 404 pages never change, except on publication.
+	if ( is_404() ) {
+		return LIFETIME_LONG;
+	}
+
+	// Other archive pages are likely to change less frequently.
+	if ( is_archive() || is_search() ) {
+		return LIFETIME_MEDIUM;
+	}
+
+	// Default to medium lifetime for other pages.
+	return LIFETIME_MEDIUM;
+}
+
+/**
  * Set the cache TTL depending on the curernt global scope.
  *
  * @return void
@@ -57,7 +154,7 @@ function set_cache_ttl() : void {
 	}
 
 	global $batcache;
-	$max_age = absint( apply_filters( 'smartcache.max-age', DAY_IN_SECONDS * 14 ) ); // 14 days by default.
+	$max_age = absint( apply_filters( 'smartcache.max-age', get_default_lifetime() ) );
 	if ( ! $batcache || ! is_object( $batcache ) ) {
 		header( 'Cache-Control: s-maxage=' . $max_age . ', must-revalidate' );
 	} else {
@@ -176,7 +273,6 @@ function on_transition_post_status( string $new_status, string $old_status, WP_P
 	if ( $old_status !== 'publish' ) {
 		return;
 	}
-
 
 	queue_invalidate_urls( get_urls_to_invalidate_for_post( $post->ID ) );
 }
