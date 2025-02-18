@@ -81,10 +81,18 @@ function render_quota_section() {
 }
 
 function render_settings_page() : void {
-	settings_errors( 'smartcache' );
+	$usage = Smartcache\get_invalidation_quota_usage();
+	$quota = Smartcache\get_invalidation_quota();
+	$exceeded_quota = $usage >= $quota;
+	if ( $exceeded_quota ) {
+		add_settings_error( 'smartcache', 'quota_exceeded', __( 'You have exceeded your invalidation quota for this month. Contact support.'), 'warning' );
+	}
+	$submit_attr = $exceeded_quota ? 'disabled' : '';
+
 	?>
 	<div class="wrap">
 		<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
+		<?php settings_errors( 'smartcache' ); ?>
 		<form action="options.php" method="post">
 			<?php
 			settings_fields( 'smartcache' );
@@ -106,7 +114,13 @@ function render_settings_page() : void {
 						/>
 						<?php
 						wp_nonce_field( 'smartcache.invalidate-urls' );
-						submit_button( __( 'Invalidate entire cache', 'smartcache' ), 'delete' );
+						submit_button(
+							__( 'Invalidate entire cache', 'smartcache' ),
+							'',
+							'submit',
+							true,
+							$submit_attr
+						);
 						?>
 					</form>
 
@@ -142,7 +156,13 @@ function render_settings_page() : void {
 						</p>
 						<?php
 						wp_nonce_field( 'smartcache.invalidate-urls' );
-						submit_button( __( 'Invalidate URLs', 'smartcache' ) );
+						submit_button(
+							__( 'Invalidate URLs', 'smartcache' ),
+							'primary',
+							'submit',
+							true,
+							$submit_attr
+						);
 						?>
 					</form>
 				</td>
@@ -170,7 +190,7 @@ function check_on_invalidate_urls_submit() {
 	}
 
 	if ( ! check_admin_referer( 'smartcache.invalidate-urls' ) ) {
-		add_settings_error( 'logcache', 'invalidated', __( 'Could not validate your request (invalid nonce). Try again.'), 'success' );
+		add_settings_error( 'smartcache', 'invalidated', __( 'Could not validate your request (invalid nonce). Try again.'), 'success' );
 		return;
 	}
 
@@ -178,8 +198,8 @@ function check_on_invalidate_urls_submit() {
 	$result = Smartcache\invalidate_urls( $urls );
 
 	if ( $result === true ) {
-		add_settings_error( 'logcache', 'invalidated', __( 'Invalidate request successful.'), 'success' );
+		add_settings_error( 'smartcache', 'invalidated', __( 'Invalidate request successful.'), 'success' );
 	} else {
-		add_settings_error( 'logcache', 'invalidated', __( 'There was a problem issuing the invalidation request.'), 'error' );
+		add_settings_error( 'smartcache', 'invalidated', __( 'There was a problem issuing the invalidation request.'), 'error' );
 	}
 }
