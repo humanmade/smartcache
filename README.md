@@ -16,15 +16,19 @@ Frequently updated content is cached for 5 minutes. This content is:
 
 Regular content is cached for 6 hours. This content is:
 
+* Content published in the past 30 days (except last 24 hours as above)
 * Most archive pages (including categories, tags, author pages)
 * Date archive pages, except the current one (today/current month/current year)
 * Search pages
 
 Infrequently updated content is cached for 14 days. This content is:
 
+* Content published more than 30 days ago
 * Pages (except those published recently)
 * Date archive pages which aren't the current one
 * 404 pages
+
+For infrequently updated content, the cache is manually invalidated when the content is updated.
 
 
 ## Overriding behaviour
