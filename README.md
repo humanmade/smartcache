@@ -28,7 +28,10 @@ Infrequently updated content is cached for 14 days. This content is:
 * Date archive pages which aren't the current one
 * 404 pages
 
-For infrequently updated content, the cache is manually invalidated when the content is updated.
+Smartcache forces cache invalidation on the CDN in the following cases:
+
+* Publishing a new piece of content (to invalidate the 404)
+* Updating an infrequently updated piece of content
 
 
 ## Overriding behaviour

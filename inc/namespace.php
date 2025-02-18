@@ -274,9 +274,19 @@ function on_transition_post_status( string $new_status, string $old_status, WP_P
 		return;
 	}
 
-	// Is this a new post? If so, don't send any invalidations.
-	$skip_invalidation = apply_filters( 'smartcache.should_invalidate', ! is_new_content( $post ), $post );
-	if ( $skip_invalidation ) {
+	// If we're *just* publishing the post, ensure it invalidates.
+	//
+	// For other new content changes, skip invalidation to avoid rush of traffic during
+	// high-traffic events.
+	//
+	// For old content, invalidate it.
+	if ( is_new_content( $post ) ) {
+		$should_invalidate = ( $new_status !== $old_status );
+	} else {
+		$should_invalidate = true;
+	}
+	$should_invalidate = apply_filters( 'smartcache.should_invalidate', $should_invalidate, $post );
+	if ( ! $should_invalidate ) {
 		return;
 	}
 
