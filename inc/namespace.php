@@ -29,6 +29,16 @@ const LIFETIME_MEDIUM = 21600;
 const LIFETIME_LONG = 1209600;
 
 /**
+ * Threshold for the SWR (Stale-While-Revalidate) cache.
+ */
+const SWR_THRESHOLD_LONG = 60;
+
+/**
+ * Threshold for short SWR (Stale-While-Revalidate) cache.
+ */
+const SWR_THRESHOLD_SHORT = 30;
+
+/**
  * Bootstrap function to set up the plugin.
  *
  * @return void
@@ -155,11 +165,22 @@ function set_cache_ttl() : void {
 
 	global $batcache;
 	$max_age = absint( apply_filters( 'smartcache.max-age', get_default_lifetime() ) );
+	$swr_time = apply_filters( 'smartcache.swr_threshold', $max_age <= 300 ? SWR_THRESHOLD_SHORT : SWR_THRESHOLD_LONG );
 	if ( ! $batcache || ! is_object( $batcache ) ) {
-		header( 'Cache-Control: s-maxage=' . $max_age . ', must-revalidate' );
+		$value = sprintf(
+			's-maxage=%d, stale-while-revalidate=%d, must-revalidate',
+			$max_age,
+			$swr_time
+		);
 	} else {
-		header( 'Cache-Control: s-maxage=' . $max_age . ', max-age=' . $batcache->max_age . ', must-revalidate' );
+		$value = sprintf(
+			's-maxage=%d, max-age=%d, stale-while-revalidate=%d, must-revalidate',
+			$max_age,
+			$batcache->max_age,
+			$swr_time
+		);
 	}
+	header( $value );
 }
 
 /**

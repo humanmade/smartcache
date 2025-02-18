@@ -42,6 +42,7 @@ Smartcache has a variety of filters available. These include:
 * `smartcache.is_old_post` - Filter whether a specific post is considered old (infrequently updated). (Default true for posts older than the old threshold.)
 * `smartcache.is_new_post` - Filter whether a specific post is considered new (frequently updated). (Default true if published in previous 24 hours.)
 * `smartcache.max-age` - Filter the maximum lifetime for the current page directly.
+* `smartcache.swr_threshold` - Filter the stale-while-revalidate timeframe. (Default 30s for frequently updated content, 60s for infrequently updated content.)
 * `smartcache.should_cache` - Filter whether a page should be cached at all. (Only affects whether Smartcache generates a header, but may be overridden by other behaviour or by the cache itself.)
 * `smartcache.urls_to_invalidate_for_post` - Filter which URLs to invalidate for a given post.
 * `smartcache.should_invalidate` - Should we invalidate URLs for this post? (Default true, false for new content as it will expire naturally quickly.)
