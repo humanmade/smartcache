@@ -119,16 +119,26 @@ function render_settings_page() : void {
 			</tr>
 			<tr>
 				<th scope="row">
-					Invalidate URLs
+					<label for="smartcache_urls">
+						Invalidate URLs
+					</label>
 				</th>
 				<td>
 					<form method="post">
-						<label>
-							URLs to invalidate (one per line.)
-							<textarea class="large-text code" rows="10" name="smartcache_urls"></textarea>
-						</label>
+						<textarea
+							class="large-text code"
+							id="smartcache_urls"
+							rows="10"
+							name="smartcache_urls"
+						></textarea>
+						<p class="description">
+							Specify URLs to invalidate, one per line.
+						</p>
 						<p class="description">
 							Use <code>*</code> as a wildcard, wildcards can only be at the end of a URL. A maximum of <?php echo esc_html( Cloud\PATHS_INVALIDATION_LIMIT ) ?> absolute URLs or <?php echo esc_html( Cloud\WILDCARD_INVALIDATION_LIMIT ) ?> wildcard URLs can be issued per request.
+						</p>
+						<p class="description">
+							If you need to invalidate a lot of URLs, use a single broad wildcard instead of listing each URL.
 						</p>
 						<?php
 						wp_nonce_field( 'smartcache.invalidate-urls' );
