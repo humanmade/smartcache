@@ -44,20 +44,52 @@ function render_settings_page() : void {
 			?>
 		</form>
 
-		<h1><?php echo __( 'Invalidate URLs', 'smartcache' ) ?></h1>
-		<form method="post">
-			<label>
-				URLs to invalidate (one per line.)
-				<textarea class="large-text code" rows=10 name="smartcache_urls"></textarea>
-			</label>
-			<p class="description">
-				Use <code>*</code> as a wildcard, wildcards can only be at the end of a URL. A maximum of <?php echo esc_html( Cloud\PATHS_INVALIDATION_LIMIT ) ?> absolute URLs or <?php echo esc_html( Cloud\WILDCARD_INVALIDATION_LIMIT ) ?> wildcard URLs can be issued per request.
-			</p>
-			<?php
-			wp_nonce_field( 'smartcache.invalidate-urls' );
-			submit_button( __( 'Invalidate', 'smartcache' ) );
-			?>
-		</form>
+		<table class="form-table">
+			<tr>
+				<th scope="row">
+					Invalidate all URLs
+				</th>
+				<td>
+					<form method="post">
+						<input
+							name="smartcache_urls"
+							type="hidden"
+							value="*"
+						/>
+						<?php
+						wp_nonce_field( 'smartcache.invalidate-urls' );
+						submit_button( __( 'Invalidate entire cache', 'smartcache' ), 'delete' );
+						?>
+					</form>
+
+					<p class="description">
+						<?php
+						_e( 'Invalidate the entire cache. Use this when performing major updates to the site, such as navigation changes or changing the theme.', 'smartcache' );
+						?>
+					</p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row">
+					Invalidate URLs
+				</th>
+				<td>
+					<form method="post">
+						<label>
+							URLs to invalidate (one per line.)
+							<textarea class="large-text code" rows="10" name="smartcache_urls"></textarea>
+						</label>
+						<p class="description">
+							Use <code>*</code> as a wildcard, wildcards can only be at the end of a URL. A maximum of <?php echo esc_html( Cloud\PATHS_INVALIDATION_LIMIT ) ?> absolute URLs or <?php echo esc_html( Cloud\WILDCARD_INVALIDATION_LIMIT ) ?> wildcard URLs can be issued per request.
+						</p>
+						<?php
+						wp_nonce_field( 'smartcache.invalidate-urls' );
+						submit_button( __( 'Invalidate URLs', 'smartcache' ) );
+						?>
+					</form>
+				</td>
+			</tr>
+		</table>
 
 		<h1>Log</h1>
 		<?php
