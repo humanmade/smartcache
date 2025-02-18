@@ -149,7 +149,7 @@ function render_settings_page() : void {
 							Specify URLs to invalidate, one per line.
 						</p>
 						<p class="description">
-							Use <code>*</code> as a wildcard, wildcards can only be at the end of a URL. A maximum of <?php echo esc_html( Cloud\PATHS_INVALIDATION_LIMIT ) ?> absolute URLs or <?php echo esc_html( Cloud\WILDCARD_INVALIDATION_LIMIT ) ?> wildcard URLs can be issued per request.
+							Use <code>*</code> as a wildcard at the end of a URL. A maximum of <?php echo esc_html( Cloud\PATHS_INVALIDATION_LIMIT ) ?> absolute URLs or <?php echo esc_html( Cloud\WILDCARD_INVALIDATION_LIMIT ) ?> wildcard URLs can be issued per request.
 						</p>
 						<p class="description">
 							If you need to invalidate a lot of URLs, use a single broad wildcard instead of listing each URL.

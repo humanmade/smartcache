@@ -59,7 +59,7 @@ function bootstrap() : void {
  * @return int
  */
 function get_invalidation_quota() : int {
-	return apply_filters( 'smartcache.invalidation_quota', 1000 );
+	return apply_filters( 'smartcache.invalidation_quota', 10_000 );
 }
 
 /**
