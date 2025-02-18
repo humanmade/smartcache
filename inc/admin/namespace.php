@@ -23,7 +23,7 @@ function bootstrap() : void {
 
 function register_admin_page() : void {
 	add_submenu_page(
-		'options-general.php',
+		'tools.php',
 		_x( 'Smartcache', 'settings page title', 'smartcache' ),
 		_x( 'Smartcache', 'settings menu title', 'smartcache' ),
 		'manage_options',
