@@ -165,15 +165,21 @@ function render_settings_page() : void {
  * @return void
  */
 function check_on_invalidate_urls_submit() {
-	if ( isset( $_POST['smartcache_urls'] ) && check_admin_referer( 'smartcache.invalidate-urls' ) ) {
-		$urls = array_filter( array_map( 'sanitize_text_field', array_map( 'trim', explode( "\n", $_POST['smartcache_urls'] ) ) ) );
+	if ( ! isset( $_POST['smartcache_urls'] ) ) {
+		return;
+	}
 
-		$result = Smartcache\invalidate_urls( $urls );
+	if ( ! check_admin_referer( 'smartcache.invalidate-urls' ) ) {
+		add_settings_error( 'logcache', 'invalidated', __( 'Could not validate your request (invalid nonce). Try again.'), 'success' );
+		return;
+	}
 
-		if ( $result === true ) {
-			add_settings_error( 'logcache', 'invalidated', __( 'Invalidate request successful.'), 'success' );
-		} else {
-			add_settings_error( 'logcache', 'invalidated', __( 'There was a problem issueing the invalidation request.'), 'error' );
-		}
+	$urls = array_filter( array_map( 'sanitize_text_field', array_map( 'trim', explode( "\n", $_POST['smartcache_urls'] ) ) ) );
+	$result = Smartcache\invalidate_urls( $urls );
+
+	if ( $result === true ) {
+		add_settings_error( 'logcache', 'invalidated', __( 'Invalidate request successful.'), 'success' );
+	} else {
+		add_settings_error( 'logcache', 'invalidated', __( 'There was a problem issuing the invalidation request.'), 'error' );
 	}
 }
