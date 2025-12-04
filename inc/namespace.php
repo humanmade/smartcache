@@ -29,11 +29,18 @@ const LIFETIME_MEDIUM = 21600;
 const LIFETIME_LONG = 1209600;
 
 /**
+ * Global cache group for Smartcache.
+ */
+const CACHE_GROUP_GLOBAL = 'smartcache-global';
+
+/**
  * Bootstrap function to set up the plugin.
  *
  * @return void
  */
 function bootstrap() : void {
+	wp_cache_add_global_groups( CACHE_GROUP_GLOBAL );
+
 	add_action( 'template_redirect', __NAMESPACE__ . '\\set_cache_ttl' );
 	add_action( 'transition_post_status', __NAMESPACE__ . '\\on_transition_post_status', 10, 3 );
 	add_action( 'smartcache.invalidate_urls', __NAMESPACE__ . '\\on_cron_invalidate_urls' );
@@ -42,6 +49,46 @@ function bootstrap() : void {
 		require_once __DIR__ . '/class-cli-command.php';
 		WP_CLI::add_command( 'smartcache', __NAMESPACE__ . '\\CLI_Command' );
 	}
+}
+
+/**
+ * Get the monthly invalidation quota.
+ *
+ * On Altis, this is always 1000.
+ *
+ * @return int
+ */
+function get_invalidation_quota() : int {
+	return apply_filters( 'smartcache.invalidation_quota', 10_000 );
+}
+
+/**
+ * Get the quota usage for this month.
+ *
+ * @return int
+ */
+function get_invalidation_quota_usage() : int {
+	$month = gmdate( 'Y-m' );
+	return (int) wp_cache_get( 'usage-' . $month, CACHE_GROUP_GLOBAL ) ?? 0;
+}
+
+/**
+ * Increase the quota usage.
+ *
+ * This never gets reset, as we just use monthly keys.
+ *
+ * @param int $num Number to increment by.
+ * @return void
+ */
+function increment_invalidation_quota_usage( $num = 1 ) {
+	// If it doesn't exist, create it.
+	$month = gmdate( 'Y-m' );
+	if ( ! wp_cache_get( 'usage-' . $month, CACHE_GROUP_GLOBAL ) ) {
+		wp_cache_set( 'usage-' . $month, 0, CACHE_GROUP_GLOBAL );
+	}
+
+	// Then, increment. (Using incr ensures resiliency against concurrency.)
+	wp_cache_incr( 'usage-' . $month, $num, CACHE_GROUP_GLOBAL );
 }
 
 /**
@@ -188,6 +235,7 @@ function invalidate_urls( array $urls ) : bool {
 	}, $urls );
 
 	try {
+		increment_invalidation_quota_usage( count( $urls ) );
 		$result = Cloud\purge_cdn_paths( $urls );
 	} catch ( Exception $e ) {
 		foreach ( $urls as $url ) {
