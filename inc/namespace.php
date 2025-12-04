@@ -8,11 +8,39 @@ use WP_CLI;
 use WP_Post;
 
 /**
+ * Short lifetime, used by frequently updated content.
+ *
+ * (5 minutes.)
+ */
+const LIFETIME_SHORT = 300;
+
+/**
+ * Medium lifetime, used by most regular content.
+ *
+ * (6 hours.)
+ */
+const LIFETIME_MEDIUM = 21600;
+
+/**
+ * Long lifetime, used by rarely updated or old content.
+ *
+ * (14 days.)
+ */
+const LIFETIME_LONG = 1209600;
+
+/**
+ * Global cache group for Smartcache.
+ */
+const CACHE_GROUP_GLOBAL = 'smartcache-global';
+
+/**
  * Bootstrap function to set up the plugin.
  *
  * @return void
  */
 function bootstrap() : void {
+	wp_cache_add_global_groups( CACHE_GROUP_GLOBAL );
+
 	add_action( 'template_redirect', __NAMESPACE__ . '\\set_cache_ttl' );
 	add_action( 'transition_post_status', __NAMESPACE__ . '\\on_transition_post_status', 10, 3 );
 	add_action( 'smartcache.invalidate_urls', __NAMESPACE__ . '\\on_cron_invalidate_urls' );
@@ -21,6 +49,46 @@ function bootstrap() : void {
 		require_once __DIR__ . '/class-cli-command.php';
 		WP_CLI::add_command( 'smartcache', __NAMESPACE__ . '\\CLI_Command' );
 	}
+}
+
+/**
+ * Get the monthly invalidation quota.
+ *
+ * On Altis, this is always 1000.
+ *
+ * @return int
+ */
+function get_invalidation_quota() : int {
+	return apply_filters( 'smartcache.invalidation_quota', 10_000 );
+}
+
+/**
+ * Get the quota usage for this month.
+ *
+ * @return int
+ */
+function get_invalidation_quota_usage() : int {
+	$month = gmdate( 'Y-m' );
+	return (int) wp_cache_get( 'usage-' . $month, CACHE_GROUP_GLOBAL ) ?? 0;
+}
+
+/**
+ * Increase the quota usage.
+ *
+ * This never gets reset, as we just use monthly keys.
+ *
+ * @param int $num Number to increment by.
+ * @return void
+ */
+function increment_invalidation_quota_usage( $num = 1 ) {
+	// If it doesn't exist, create it.
+	$month = gmdate( 'Y-m' );
+	if ( ! wp_cache_get( 'usage-' . $month, CACHE_GROUP_GLOBAL ) ) {
+		wp_cache_set( 'usage-' . $month, 0, CACHE_GROUP_GLOBAL );
+	}
+
+	// Then, increment. (Using incr ensures resiliency against concurrency.)
+	wp_cache_incr( 'usage-' . $month, $num, CACHE_GROUP_GLOBAL );
 }
 
 /**
@@ -47,6 +115,82 @@ function should_cache_response() : bool {
 }
 
 /**
+ * Check if the given post is "old".
+ *
+ * Old content is unlikely to change frequently.
+ */
+function is_old_content( WP_Post $post ) {
+	$old_threshold = apply_filters( 'smartcache.old_threshold', 7 * DAY_IN_SECONDS );
+	return apply_filters( 'smartcache.is_old_post', $post->post_date_gmt < ( time() - $old_threshold ) );
+}
+
+function is_new_content( WP_Post $post ) {
+	return apply_filters( 'smartcache.is_new_post', $post->post_date_gmt > ( time() - DAY_IN_SECONDS ) );
+}
+
+/**
+ * Get the default lifetime for the current page.
+ *
+ * Determines an appropriate lifetime based on the age and type of the content.
+ *
+ * This can be overridden by setting a different max age manually.
+ *
+ * @return int One of LIFETIME_SHORT, LIFETIME_MEDIUM, or LIFETIME_LONG.
+ */
+function get_default_lifetime() : int {
+	// The home (i.e. post list page) is likely to change more frequently,
+	// and feed readers should always receive fresh content.
+	if ( is_home() || is_feed() ) {
+		return LIFETIME_SHORT;
+	}
+
+	// Single content depends on how old the content is.
+	if ( is_singular() ) {
+		$post = get_queried_object();
+
+		// If the post was published today, cache it for a shorter time.
+		// This accounts for fixes to the content, new comments, etc.
+		if ( is_new_content( $post ) ) {
+			return LIFETIME_SHORT;
+		}
+
+		// If the post is older than 7 days, cache it for longer.
+		// Also, pages are likely to change less frequently.
+		if ( is_old_content( $post ) || is_page() ) {
+			return LIFETIME_LONG;
+		}
+
+		return LIFETIME_MEDIUM;
+	}
+
+	// Date-based archives won't change after the period is over.
+	if ( is_date() ) {
+		$is_current = $is_current = get_query_var( 'year' ) === date( 'Y' );
+		if ( is_month() || is_day() ) {
+			$is_current = $is_current && get_query_var( 'monthnum' ) === date( 'm' );
+		}
+		if ( is_day() ) {
+			$is_current = $is_current && get_query_var( 'day' ) === date( 'd' );
+		}
+
+		return $is_current ? LIFETIME_MEDIUM : LIFETIME_LONG;
+	}
+
+	// 404 pages never change, except on publication.
+	if ( is_404() ) {
+		return LIFETIME_LONG;
+	}
+
+	// Other archive pages are likely to change less frequently.
+	if ( is_archive() || is_search() ) {
+		return LIFETIME_MEDIUM;
+	}
+
+	// Default to medium lifetime for other pages.
+	return LIFETIME_MEDIUM;
+}
+
+/**
  * Set the cache TTL depending on the curernt global scope.
  *
  * @return void
@@ -57,7 +201,7 @@ function set_cache_ttl() : void {
 	}
 
 	global $batcache;
-	$max_age = absint( apply_filters( 'smartcache.max-age', DAY_IN_SECONDS * 14 ) ); // 14 days by default.
+	$max_age = absint( apply_filters( 'smartcache.max-age', get_default_lifetime() ) );
 	if ( ! $batcache || ! is_object( $batcache ) ) {
 		header( 'Cache-Control: s-maxage=' . $max_age . ', must-revalidate' );
 	} else {
@@ -91,6 +235,7 @@ function invalidate_urls( array $urls ) : bool {
 	}, $urls );
 
 	try {
+		increment_invalidation_quota_usage( count( $urls ) );
 		$result = Cloud\purge_cdn_paths( $urls );
 	} catch ( Exception $e ) {
 		foreach ( $urls as $url ) {
@@ -177,6 +322,21 @@ function on_transition_post_status( string $new_status, string $old_status, WP_P
 		return;
 	}
 
+	// If we're *just* publishing the post, ensure it invalidates.
+	//
+	// For other new content changes, skip invalidation to avoid rush of traffic during
+	// high-traffic events.
+	//
+	// For old content, invalidate it.
+	if ( is_new_content( $post ) ) {
+		$should_invalidate = ( $new_status !== $old_status );
+	} else {
+		$should_invalidate = true;
+	}
+	$should_invalidate = apply_filters( 'smartcache.should_invalidate', $should_invalidate, $post );
+	if ( ! $should_invalidate ) {
+		return;
+	}
 
 	queue_invalidate_urls( get_urls_to_invalidate_for_post( $post->ID ) );
 }
