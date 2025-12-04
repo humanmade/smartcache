@@ -100,7 +100,7 @@ wp smartcache
 
 ## How It Works
 
-1. **Cache Headers**: On each request, Smartcache sets a `Cache-Control` header with `s-maxage` (for CDN/proxy caching)
+1. **Cache Headers**: On each request, Smartcache sets a `Cache-Control` header with `s-maxage` for CDN/proxy caching and `must-revalidate`. When Batcache is available, it also sets `max-age` for browser caching
 2. **Content Updates**: When a published post is updated, trashed, deleted, or changes to any other status, the plugin queues cache invalidation
 3. **Invalidation**: URLs are purged from both Batcache (if available) and the CDN cache
 4. **Logging**: All invalidation attempts are logged and viewable in the WordPress admin
