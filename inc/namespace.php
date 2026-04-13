@@ -149,7 +149,7 @@ function queue_invalidate_urls( array $urls ) : void {
 	if ( ! $urls ) {
 		return;
 	}
-	wp_schedule_single_event( time() + 5, 'logcache.invalidate_urls', [ $urls ] );
+	wp_schedule_single_event( time() + 5, 'smartcache.invalidate_urls', [ $urls ] );
 }
 
 /**
