@@ -14,6 +14,8 @@ use WP_Post;
  */
 function bootstrap() : void {
 	add_action( 'template_redirect', __NAMESPACE__ . '\\set_cache_ttl' );
+	add_action( 'pre_post_update', __NAMESPACE__ . '\\capture_post_permalink_before_update', 10, 2 );
+	add_action( 'before_delete_post', __NAMESPACE__ . '\\capture_post_permalink_before_delete', 10, 1 );
 	add_action( 'transition_post_status', __NAMESPACE__ . '\\on_transition_post_status', 10, 3 );
 	add_action( 'smartcache.invalidate_urls', __NAMESPACE__ . '\\on_cron_invalidate_urls' );
 
@@ -182,15 +184,86 @@ function on_transition_post_status( string $new_status, string $old_status, WP_P
 }
 
 /**
+ * Capture a post's permalink before it is updated.
+ *
+ * When a post transitions out of published state, get_permalink() returns
+ * a non-public URL (e.g. ?p=123). Capturing the permalink before the update
+ * ensures we can invalidate the correct cached URL.
+ *
+ * @param int   $post_id Post ID.
+ * @param array $data    Post data being updated.
+ * @return void
+ */
+function capture_post_permalink_before_update( int $post_id, array $data ) : void {
+	$post = get_post( $post_id );
+	if ( ! $post || $post->post_status !== 'publish' ) {
+		return;
+	}
+
+	$permalink = get_permalink( $post_id );
+	if ( ! $permalink ) {
+		return;
+	}
+
+	captured_post_permalink( $post_id, $permalink );
+}
+
+/**
+ * Capture a post's permalink before it is permanently deleted.
+ *
+ * Permanent deletion removes the post from the database before
+ * transition_post_status fires, so get_permalink() would fail at that point.
+ *
+ * @param int $post_id Post ID.
+ * @return void
+ */
+function capture_post_permalink_before_delete( int $post_id ) : void {
+	$post = get_post( $post_id );
+	if ( ! $post || $post->post_status !== 'publish' ) {
+		return;
+	}
+
+	$permalink = get_permalink( $post_id );
+	if ( ! $permalink ) {
+		return;
+	}
+
+	captured_post_permalink( $post_id, $permalink );
+}
+
+/**
+ * Registry for post permalinks captured before a status transition.
+ *
+ * Pass a permalink to store it for the given post ID.
+ * Omit the permalink to retrieve a previously stored value.
+ *
+ * @param int         $post_id   Post ID.
+ * @param string|null $permalink Permalink to store, or null to retrieve.
+ * @return string|null The stored permalink, or null if not stored.
+ */
+function captured_post_permalink( int $post_id, ?string $permalink = null ) : ?string {
+	static $permalinks = [];
+
+	if ( $permalink !== null ) {
+		$permalinks[ $post_id ] = $permalink;
+	}
+
+	return $permalinks[ $post_id ] ?? null;
+}
+
+/**
  * Get the URLs for a given post id.
  *
  * @param integer $post_id
  * @return string[]
  */
 function get_urls_to_invalidate_for_post( int $post_id ) : array {
-	$urls = [
-		get_permalink( $post_id ),
-	];
+	// Use a pre-captured permalink if available; it will be correct even when
+	// the post has already transitioned out of published state (at which point
+	// get_permalink() would return a non-public URL like ?p=123).
+	$permalink = captured_post_permalink( $post_id ) ?? get_permalink( $post_id );
+
+	$urls = $permalink ? [ $permalink ] : [];
 
 	$urls = apply_filters( 'smartcache.urls_to_invalidate_for_post', $urls, $post_id );
 
